@@ -25,7 +25,7 @@ export function useWebSocket() {
       ws.onopen = () => {
         setIsConnected(true);
         // Send authentication message
-        ws.send(JSON.stringify({ type: 'auth', userId: user.id }));
+        ws.send(JSON.stringify({ type: 'auth', userId: (user as any)?.id }));
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;

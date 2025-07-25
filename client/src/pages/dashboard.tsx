@@ -51,43 +51,43 @@ export default function Dashboard() {
     }
   }, [lastMessage, toast]);
 
-  const { data: apis = [], isLoading: apisLoading } = useQuery<Api[]>({
+  const { data: apis = [], isLoading: apisLoading, error: apisError } = useQuery<Api[]>({
     queryKey: ['/api/apis'],
     enabled: isAuthenticated,
     retry: false,
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
-  const { data: stats } = useQuery<DashboardStats>({
+  useEffect(() => {
+    if (apisError && isUnauthorizedError(apisError as Error)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [apisError, toast]);
+
+  const { data: stats, error: statsError } = useQuery<DashboardStats>({
     queryKey: ['/api/dashboard/stats'],
     enabled: isAuthenticated,
     retry: false,
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized", 
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
+
+  useEffect(() => {
+    if (statsError && isUnauthorizedError(statsError as Error)) {
+      toast({
+        title: "Unauthorized", 
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [statsError, toast]);
 
   if (isLoading) {
     return (
@@ -114,10 +114,10 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-full">
-      <Sidebar user={user} />
+      <Sidebar user={user as any} />
       
       <div className="lg:pl-64 flex flex-col flex-1">
-        <TopHeader user={user} />
+        <TopHeader user={user as any} />
         
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="py-6">

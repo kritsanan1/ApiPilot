@@ -247,7 +247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!userConnections.has(userId)) {
             userConnections.set(userId, new Set());
           }
-          userConnections.get(userId)!.add(ws);
+          const connections = userConnections.get(userId);
+          if (connections) {
+            connections.add(ws);
+          }
         }
       } catch (error) {
         console.error('WebSocket message error:', error);

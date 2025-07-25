@@ -49,24 +49,24 @@ export default function ApiManagement() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: apis = [], isLoading: apisLoading } = useQuery<Api[]>({
+  const { data: apis = [], isLoading: apisLoading, error: apisError } = useQuery<Api[]>({
     queryKey: ['/api/apis'],
     enabled: isAuthenticated,
     retry: false,
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
+
+  useEffect(() => {
+    if (apisError && isUnauthorizedError(apisError as Error)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [apisError, toast]);
 
   const deleteApiMutation = useMutation({
     mutationFn: async (apiId: number) => {
@@ -133,7 +133,7 @@ export default function ApiManagement() {
     },
   });
 
-  const filteredApis = apis.filter(api => {
+  const filteredApis = (apis as Api[]).filter((api: Api) => {
     const matchesSearch = api.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          api.url.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || api.status === filterStatus;
@@ -204,10 +204,10 @@ export default function ApiManagement() {
 
   return (
     <div className="flex h-full">
-      <Sidebar user={user} />
+      <Sidebar user={user as any} />
       
       <div className="lg:pl-64 flex flex-col flex-1">
-        <TopHeader user={user} />
+        <TopHeader user={user as any} />
         
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="py-6">

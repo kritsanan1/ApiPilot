@@ -100,7 +100,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(apis)
       .where(and(eq(apis.id, id), eq(apis.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Test result operations
@@ -120,8 +120,8 @@ export class DatabaseStorage implements IStorage {
 
   // Stats operations
   async createApiStats(stats: InsertApiStats): Promise<ApiStats> {
-    const [apiStats] = await db.insert(apiStats).values(stats).returning();
-    return apiStats;
+    const [apiStatsResult] = await db.insert(apiStats).values(stats).returning();
+    return apiStatsResult;
   }
 
   async getApiStats(apiId: number, days = 7): Promise<ApiStats[]> {
