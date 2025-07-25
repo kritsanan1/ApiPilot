@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from './useAuth';
+// Simplified for single user system
 
 interface WebSocketMessage {
   type: string;
@@ -7,14 +7,12 @@ interface WebSocketMessage {
 }
 
 export function useWebSocket() {
-  const { user, isAuthenticated } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = () => {
-    if (!isAuthenticated || !user) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -24,8 +22,8 @@ export function useWebSocket() {
       
       ws.onopen = () => {
         setIsConnected(true);
-        // Send authentication message
-        ws.send(JSON.stringify({ type: 'auth', userId: (user as any)?.id }));
+        // Send authentication message for single user
+        ws.send(JSON.stringify({ type: 'auth' }));
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;
@@ -46,11 +44,9 @@ export function useWebSocket() {
         wsRef.current = null;
         
         // Attempt to reconnect after 3 seconds
-        if (isAuthenticated && user) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, 3000);
-        }
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connect();
+        }, 3000);
       };
 
       ws.onerror = (error) => {
@@ -85,16 +81,12 @@ export function useWebSocket() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      connect();
-    } else {
-      disconnect();
-    }
+    connect();
 
     return () => {
       disconnect();
     };
-  }, [isAuthenticated, user]);
+  }, []);
 
   return {
     isConnected,

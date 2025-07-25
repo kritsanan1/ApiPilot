@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+// Simplified for single user
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopHeader } from "@/components/layout/top-header";
@@ -24,49 +24,19 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Api } from "@/types/api";
-import { isUnauthorizedError } from "@/lib/authUtils";
+// Removed authentication utilities
 
 export default function ApiManagement() {
-  const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showApiModal, setShowApiModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
-
-  const { data: apis = [], isLoading: apisLoading, error: apisError } = useQuery<Api[]>({
+  const { data: apis = [], isLoading: apisLoading } = useQuery<Api[]>({
     queryKey: ['/api/apis'],
-    enabled: isAuthenticated,
     retry: false,
   });
-
-  useEffect(() => {
-    if (apisError && isUnauthorizedError(apisError as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-    }
-  }, [apisError, toast]);
 
   const deleteApiMutation = useMutation({
     mutationFn: async (apiId: number) => {
@@ -82,17 +52,6 @@ export default function ApiManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
     },
     onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
       toast({
         title: "เกิดข้อผิดพลาด",
         description: error.message,
@@ -204,10 +163,10 @@ export default function ApiManagement() {
 
   return (
     <div className="flex h-full">
-      <Sidebar user={user as any} />
+      <Sidebar />
       
       <div className="lg:pl-64 flex flex-col flex-1">
-        <TopHeader user={user as any} />
+        <TopHeader />
         
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="py-6">

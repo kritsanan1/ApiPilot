@@ -16,16 +16,12 @@ import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (mandatory for Replit Auth)
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
-  
-  // API operations
-  getApis(userId: string): Promise<Api[]>;
-  getApiById(id: number, userId: string): Promise<Api | undefined>;
-  createApi(api: InsertApi): Promise<Api>;
-  updateApi(id: number, api: Partial<InsertApi>, userId: string): Promise<Api | undefined>;
-  deleteApi(id: number, userId: string): Promise<boolean>;
+  // API operations - simplified for single user
+  getApis(): Promise<Api[]>;
+  getApiById(id: number): Promise<Api | undefined>;
+  createApi(api: Omit<InsertApi, 'userId'>): Promise<Api>;
+  updateApi(id: number, api: Partial<Omit<InsertApi, 'userId'>>): Promise<Api | undefined>;
+  deleteApi(id: number): Promise<boolean>;
   
   // Test result operations
   createTestResult(result: InsertTestResult): Promise<ApiTestResult>;
@@ -34,7 +30,7 @@ export interface IStorage {
   // Stats operations
   createApiStats(stats: InsertApiStats): Promise<ApiStats>;
   getApiStats(apiId: number, days?: number): Promise<ApiStats[]>;
-  getDashboardStats(userId: string): Promise<{
+  getDashboardStats(): Promise<{
     totalApis: number;
     activeApis: number;
     averageUptime: number;
@@ -44,62 +40,40 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
-
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
-  }
-
-  // API operations
-  async getApis(userId: string): Promise<Api[]> {
+  // API operations - simplified for single user
+  async getApis(): Promise<Api[]> {
     return await db
       .select()
       .from(apis)
-      .where(eq(apis.userId, userId))
       .orderBy(desc(apis.updatedAt));
   }
 
-  async getApiById(id: number, userId: string): Promise<Api | undefined> {
+  async getApiById(id: number): Promise<Api | undefined> {
     const [api] = await db
       .select()
       .from(apis)
-      .where(and(eq(apis.id, id), eq(apis.userId, userId)));
+      .where(eq(apis.id, id));
     return api;
   }
 
-  async createApi(api: InsertApi): Promise<Api> {
-    const [newApi] = await db.insert(apis).values(api).returning();
+  async createApi(api: Omit<InsertApi, 'userId'>): Promise<Api> {
+    const [newApi] = await db.insert(apis).values({ ...api, userId: 'default' }).returning();
     return newApi;
   }
 
-  async updateApi(id: number, apiData: Partial<InsertApi>, userId: string): Promise<Api | undefined> {
+  async updateApi(id: number, apiData: Partial<Omit<InsertApi, 'userId'>>): Promise<Api | undefined> {
     const [updatedApi] = await db
       .update(apis)
       .set({ ...apiData, updatedAt: new Date() })
-      .where(and(eq(apis.id, id), eq(apis.userId, userId)))
+      .where(eq(apis.id, id))
       .returning();
     return updatedApi;
   }
 
-  async deleteApi(id: number, userId: string): Promise<boolean> {
+  async deleteApi(id: number): Promise<boolean> {
     const result = await db
       .delete(apis)
-      .where(and(eq(apis.id, id), eq(apis.userId, userId)));
+      .where(eq(apis.id, id));
     return (result.rowCount || 0) > 0;
   }
 
@@ -138,21 +112,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(apiStats.date));
   }
 
-  async getDashboardStats(userId: string): Promise<{
+  async getDashboardStats(): Promise<{
     totalApis: number;
     activeApis: number;
     averageUptime: number;
     averageResponseTime: number;
     totalErrors: number;
   }> {
-    // Get user APIs
-    const userApis = await db
+    // Get all APIs
+    const allApis = await db
       .select()
-      .from(apis)
-      .where(eq(apis.userId, userId));
+      .from(apis);
 
-    const totalApis = userApis.length;
-    const activeApis = userApis.filter(api => api.status === 'active').length;
+    const totalApis = allApis.length;
+    const activeApis = allApis.filter(api => api.status === 'active').length;
 
     if (totalApis === 0) {
       return {
@@ -164,8 +137,8 @@ export class DatabaseStorage implements IStorage {
       };
     }
 
-    // Get recent test results for all user APIs
-    const apiIds = userApis.map(api => api.id);
+    // Get recent test results for all APIs
+    const apiIds = allApis.map(api => api.id);
     const recentResults = await db
       .select()
       .from(apiTestResults)

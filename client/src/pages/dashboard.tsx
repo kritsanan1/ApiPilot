@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+// Simplified for single user
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -16,28 +16,12 @@ import { Download, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { Api, DashboardStats } from "@/types/api";
-import { isUnauthorizedError } from "@/lib/authUtils";
+// Removed authentication utilities
 
 export default function Dashboard() {
-  const { user, isAuthenticated, isLoading } = useAuth();
   const { lastMessage } = useWebSocket();
   const { toast } = useToast();
   const [showApiModal, setShowApiModal] = useState(false);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   // Handle WebSocket messages
   useEffect(() => {
@@ -51,58 +35,15 @@ export default function Dashboard() {
     }
   }, [lastMessage, toast]);
 
-  const { data: apis = [], isLoading: apisLoading, error: apisError } = useQuery<Api[]>({
+  const { data: apis = [], isLoading: apisLoading } = useQuery<Api[]>({
     queryKey: ['/api/apis'],
-    enabled: isAuthenticated,
     retry: false,
   });
 
-  useEffect(() => {
-    if (apisError && isUnauthorizedError(apisError as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-    }
-  }, [apisError, toast]);
-
-  const { data: stats, error: statsError } = useQuery<DashboardStats>({
+  const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['/api/dashboard/stats'],
-    enabled: isAuthenticated,
     retry: false,
   });
-
-  useEffect(() => {
-    if (statsError && isUnauthorizedError(statsError as Error)) {
-      toast({
-        title: "Unauthorized", 
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-    }
-  }, [statsError, toast]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">กำลังโหลด...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null; // Will redirect to login
-  }
 
   const defaultStats: DashboardStats = {
     totalApis: 0,
@@ -114,10 +55,10 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-full">
-      <Sidebar user={user as any} />
+      <Sidebar />
       
       <div className="lg:pl-64 flex flex-col flex-1">
-        <TopHeader user={user as any} />
+        <TopHeader />
         
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="py-6">
